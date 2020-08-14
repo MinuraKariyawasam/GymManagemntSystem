@@ -1,13 +1,19 @@
 package sample;
 
-
+import com.mongodb.client.*;
+import com.mongodb.client.result.DeleteResult;
 import javafx.scene.control.Label;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.json.JsonWriterSettings;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import static com.mongodb.client.model.Filters.eq;
 
 public class MyGymManager<readLogFiles> implements GymManager, Serializable{ // MyGymManager implement by GymManager
     List<DefaultMember> memberListForCalculations = new ArrayList<>();
@@ -24,30 +30,22 @@ public class MyGymManager<readLogFiles> implements GymManager, Serializable{ // 
      */
 
     public void readLogFiles(){
-        boolean IsEmpty = true;
-        try {
-            readLogFiles = new ObjectInputStream(new FileInputStream("log.txt"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        while (IsEmpty) {
-            DefaultMember newDefaultMember = null;
+        // handling the mongo connection information
+        Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
 
-                try {
-                    try {
-                        newDefaultMember = (DefaultMember) readLogFiles.readObject();
-                    }catch (EOFException ex1){
-                        break;
-                    }
-                } catch (ClassNotFoundException | IOException e) {
-                    e.printStackTrace();
-                }
-            if (newDefaultMember != null) {
-                memberListForCalculations.add(newDefaultMember);
-            } else {
-                IsEmpty = false;
-            }
-        }
+        final String uriString = "mongodb+srv://admin:1234@cluster0.xjafm.mongodb.net/test";
+
+        MongoClient mongoClient = MongoClients.create(uriString);
+
+        MongoDatabase mongoDB = mongoClient.getDatabase("GMS");
+        MongoCollection<Document> collection = mongoDB.getCollection("Cluster0");
+
+        // add all data in mongo to list
+        FindIterable<Document> findIterable = collection.find(new Document());
+        //memberListForCalculations.add(findIterable);
+
+        mongoClient.close();
+        System.out.println("Connection Establish Successfully.");
     }
 
     @Override
@@ -63,6 +61,7 @@ public class MyGymManager<readLogFiles> implements GymManager, Serializable{ // 
             //membership number not in the system then its only add
             if (!isMemberAlreadyIn) {
                 memberListForCalculations.add(DefaultNewMember);
+                saveAllMembersDataFile(); // save to mongo
                 System.out.println("Member add Successfully.");
                 System.out.println("Free membership available: " + (100 - memberListForCalculations.size()));
             }else {
@@ -75,35 +74,26 @@ public class MyGymManager<readLogFiles> implements GymManager, Serializable{ // 
 
     @Override
     public void deleteMember(String DefaultMemberShipNo) {
-        boolean isMemberShipNoInList = false;
-        for (DefaultMember memberDeleteFromList: memberListForCalculations){
-            if (memberDeleteFromList.getMemberShipNumber().equals(DefaultMemberShipNo)){
-                isMemberShipNoInList = true; // if membership number is found isMemberShipNoInList --> true
-                memberListForCalculations.remove(memberDeleteFromList); // remove membership number from List
-                System.out.println();
-                System.out.println(memberDeleteFromList.getMemberName() + " Remove Successfully");
-                if (memberDeleteFromList instanceof StudentMember){ // check member type
-                    System.out.println("Member Type: Student member type");
-                }else if (memberDeleteFromList instanceof  Over60Member){
-                    System.out.println("Member Type: Over 60 member type");
-                }else {
-                    System.out.println("Member Type: Default member type");
-                }
-                System.out.println("-----------------------------------------");
-                System.out.println();
-                System.out.println("Maximum no of members: " + memberListForCalculations.size());
-                System.out.println("Free membership available: " + (100 - memberListForCalculations.size()));
-                break;
-            }
-        }
 
-        if (!isMemberShipNoInList){
-            System.out.println("Invalid. Check the membership number again.");
-        }
+        // handling the mongo connection information
+        Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
+
+        final String uriString = "mongodb+srv://admin:1234@cluster0.xjafm.mongodb.net/test";
+
+        MongoClient mongoClient = MongoClients.create(uriString);
+
+        MongoDatabase mongoDB = mongoClient.getDatabase("GMS");
+        MongoCollection<Document> collection = mongoDB.getCollection("Cluster0");
+
+        Bson userMembershipNo = eq("_id", DefaultMemberShipNo);
+
+        Document doc = collection.findOneAndDelete(userMembershipNo);
+        System.out.println(DefaultMemberShipNo + " Member Delete Successfully.");
     }
 
     @Override
     public void PrintListOfMembers() {
+
         for (DefaultMember membersPrintFromList: memberListForCalculations){
             System.out.println("Members available in the system");
             System.out.println();
@@ -146,20 +136,25 @@ public class MyGymManager<readLogFiles> implements GymManager, Serializable{ // 
 
     @Override
     public void saveAllMembersDataFile() {
-        //saving data to file
-        try {
-            logFilesDataSaving = new ObjectOutputStream(new FileOutputStream("log.txt"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        for (DefaultMember listForLogFiles : memberListForCalculations) {
-            try {
-                logFilesDataSaving.writeObject(listForLogFiles);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+
+        // handling the mongo connection information
+        Logger.getLogger("org.mongodb.driver").setLevel(Level.WARNING);
+
+        final String uriString = "mongodb+srv://admin:1234@cluster0.xjafm.mongodb.net/test";
+
+        MongoClient mongoClient = MongoClients.create(uriString);
+
+        MongoDatabase mongoDB = mongoClient.getDatabase("GMS");
+        MongoCollection<Document> collection = mongoDB.getCollection("Cluster0");
+        Document userData = new Document();
+
+
+        for (int i = 0; i < memberListForCalculations.size(); i++){
+            userData.append("_id", memberListForCalculations.get(i).getMemberShipNumber()).append("UserName", memberListForCalculations.get(i).getMemberName()).append("UserEmail",memberListForCalculations.get(i).getMemberEmail()).append("UserData",memberListForCalculations.get(i).getStartMemberShipDate().toString());
         }
 
+        collection.insertOne(userData);
+        mongoClient.close();
     }
 
     @Override

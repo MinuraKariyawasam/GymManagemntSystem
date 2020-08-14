@@ -233,7 +233,6 @@ public class GymManagementSystemUI extends Application {
             System.out.println("3: get detail preview of members");
             System.out.println("4: sort members list");
             System.out.println("5: GUI - visualise the list of members & search for members");
-            System.out.println("6: save data");
             System.out.println("7: save member details to txt file");
             System.out.println("8: Exit");
 
@@ -273,9 +272,6 @@ public class GymManagementSystemUI extends Application {
                     Application.launch();
                     isClickExit = false;
                     System.out.println("Thank you for using Gym Manager System.");
-                    break;
-                case 6: // temporally data saving
-                    saveAlldataForLogFilesAndUserFiles();
                     break;
                 case 7: // user data report saving to txt file
                     saveMemberDetailsToTXTFile();
